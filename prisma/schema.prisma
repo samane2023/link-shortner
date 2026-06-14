@@ -1,0 +1,102 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+model User {
+  id           String      @id @default(cuid())
+  name         String
+  email        String      @unique
+  passwordHash String
+  role         Role        @default(USER)
+  isActive     Boolean     @default(true)
+
+  links        ShortLink[]
+  tags         Tag[]
+
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@index([role])
+  @@index([createdAt])
+}
+
+model ShortLink {
+  id          String       @id @default(cuid())
+  title       String?
+  originalUrl String
+  slug        String       @unique
+  description String?
+  isActive    Boolean      @default(true)
+
+  userId      String
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  clicks      ClickEvent[]
+  tags        LinkTag[]
+
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@index([userId])
+  @@index([slug])
+  @@index([createdAt])
+}
+
+model ClickEvent {
+  id        String    @id @default(cuid())
+
+  linkId    String
+  link      ShortLink @relation(fields: [linkId], references: [id], onDelete: Cascade)
+
+  ipHash    String?
+  userAgent String?
+  referrer  String?
+
+  createdAt DateTime  @default(now())
+
+  @@index([linkId])
+  @@index([createdAt])
+}
+
+model Tag {
+  id        String    @id @default(cuid())
+  name      String
+  color     String?
+
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  links     LinkTag[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@unique([userId, name])
+  @@index([userId])
+}
+
+model LinkTag {
+  id        String    @id @default(cuid())
+
+  linkId    String
+  link      ShortLink @relation(fields: [linkId], references: [id], onDelete: Cascade)
+
+  tagId     String
+  tag       Tag       @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime  @default(now())
+
+  @@unique([linkId, tagId])
+  @@index([linkId])
+  @@index([tagId])
+}
